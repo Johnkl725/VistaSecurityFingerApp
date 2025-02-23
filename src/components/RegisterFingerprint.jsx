@@ -16,11 +16,11 @@ export default function RegisterFingerprint() {
 
   useEffect(() => {
     socket.on("connect", () => {
-      console.log("✅ Cliente conectado a WebSockets");
+      console.log("[FRONTEND DEBUG] ✅ Cliente conectado a WebSockets");
     });
 
     socket.on("fingerprint-registered", (data) => {
-      console.log("📥 Respuesta del servidor:", data);
+      console.log("[FRONTEND DEBUG] 📥 Respuesta del servidor:", data);
       setMessage(data.message);
       setLoading(false);
 
@@ -33,7 +33,7 @@ export default function RegisterFingerprint() {
     });
 
     socket.on("connect_error", (error) => {
-      console.error("❌ Error en la conexión WebSocket:", error);
+      console.error("[FRONTEND DEBUG] ❌ Error en la conexión WebSocket:", error);
       setLoading(false);
       setMessage("❌ Error en la conexión con el servidor.");
     });
@@ -47,19 +47,24 @@ export default function RegisterFingerprint() {
   const handleRegister = async () => {
     setLoading(true);
     setMessage("Esperando huella...");
-    console.log("📤 Enviando solicitud de enrolamiento al servidor...");
+    console.log("[FRONTEND DEBUG] 📤 Enviando solicitud de enrolamiento al servidor...");
 
     try {
-      const response = await fetch("https://servidorfingerprinter.onrender.com/start-enroll", {
+      const response = await fetch("https://servidorfingerprinter.onrender.com/set-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "enroll" }),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
-      console.log("📥 Respuesta del servidor:", data);
-      setMessage(data.message);
+      console.log("[FRONTEND DEBUG] 📥 Respuesta del servidor:", data);
+      setMessage("Coloca tu dedo en el sensor..."); // Actualizamos mensaje para guiar al usuario
     } catch (error) {
-      console.error("❌ Error al comunicarse con el servidor:", error);
+      console.error("[FRONTEND DEBUG] ❌ Error al comunicarse con el servidor:", error);
       setMessage("❌ Error al comunicarse con el servidor.");
       setLoading(false);
     }
