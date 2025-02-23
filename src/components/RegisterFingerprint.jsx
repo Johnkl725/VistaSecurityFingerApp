@@ -15,13 +15,12 @@ export default function RegisterFingerprint() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    console.log("[FRONTEND DEBUG] Componente RegisterFingerprint montado");
     socket.on("connect", () => {
-      console.log("[FRONTEND DEBUG] ✅ Cliente conectado a WebSockets");
+      console.log("✅ Cliente conectado a WebSockets");
     });
 
     socket.on("fingerprint-registered", (data) => {
-      console.log("[FRONTEND DEBUG] 📥 Respuesta del servidor (fingerprint-registered):", data);
+      console.log("📥 Respuesta del servidor:", data);
       setMessage(data.message);
       setLoading(false);
 
@@ -29,47 +28,38 @@ export default function RegisterFingerprint() {
         const userData = { id: data.id, name: data.name };
         setUserData(userData);
         localStorage.setItem("user", JSON.stringify(userData));
-        console.log("[FRONTEND DEBUG] ✅ Huella registrada, redirigiendo en 2 segundos...");
         setTimeout(() => navigate("/dashboard"), 2000);
       }
     });
 
     socket.on("connect_error", (error) => {
-      console.error("[FRONTEND DEBUG] ❌ Error en la conexión WebSocket:", error);
+      console.error("❌ Error en la conexión WebSocket:", error);
       setLoading(false);
       setMessage("❌ Error en la conexión con el servidor.");
     });
 
     return () => {
-      console.log("[FRONTEND DEBUG] Desmontando componente, limpiando listeners");
       socket.off("fingerprint-registered");
       socket.off("connect_error");
     };
   }, [navigate]);
 
   const handleRegister = async () => {
-    console.log("[FRONTEND DEBUG] Botón 'Enrolar Huella' presionado");
     setLoading(true);
     setMessage("Esperando huella...");
-    console.log("[FRONTEND DEBUG] 📤 Preparando solicitud POST a /set-action...");
+    console.log("📤 Enviando solicitud de enrolamiento al servidor...");
 
     try {
-      const response = await fetch("https://servidorfingerprinter.onrender.com/set-action", {
+      const response = await fetch("https://servidorfingerprinter.onrender.com/start-enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "enroll" }),
       });
 
-      console.log("[FRONTEND DEBUG] Solicitud enviada, esperando respuesta...");
-      if (!response.ok) {
-        throw new Error(`[FRONTEND DEBUG] Error HTTP! Status: ${response.status}`);
-      }
-
       const data = await response.json();
-      console.log("[FRONTEND DEBUG] 📥 Respuesta del servidor:", data);
-      setMessage("Coloca tu dedo en el sensor...");
+      console.log("📥 Respuesta del servidor:", data);
+      setMessage(data.message);
     } catch (error) {
-      console.error("[FRONTEND DEBUG] ❌ Error al comunicarse con el servidor:", error.message);
+      console.error("❌ Error al comunicarse con el servidor:", error);
       setMessage("❌ Error al comunicarse con el servidor.");
       setLoading(false);
     }
