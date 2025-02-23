@@ -48,7 +48,10 @@ export default function LoginForm({ onLoginSuccess }) {
     setMessage("Esperando verificación...");
     console.log("📤 Enviando señal de verificación al ESP32...");
 
-    socket.emit("start-verify"); // 🔹 Enviar evento WebSocket al ESP32
+    // Emit event to server to start verification
+    socket.emit("start-verify", (response) => {
+      console.log("📥 Respuesta del servidor:", response);
+    });
   };
 
   return (
