@@ -4,8 +4,8 @@ import io from "socket.io-client";
 import BackButton from "./BackButton";
 
 const socket = io("https://servidorfingerprinter.onrender.com", {
-  transports: ["websocket"],
-  reconnection: true,
+  reconnection: true, // Permitimos reconexión automática
+  // transports: ["websocket"] // Comentado para que Socket.IO elija el transporte
 });
 
 export default function RegisterFingerprint() {
@@ -33,7 +33,7 @@ export default function RegisterFingerprint() {
     });
 
     socket.on("connect_error", (error) => {
-      console.error("❌ Error en la conexión WebSocket:", error);
+      console.error("❌ Error de conexión detallado:", error);
       setLoading(false);
       setMessage("❌ Error en la conexión con el servidor.");
     });
@@ -72,9 +72,11 @@ export default function RegisterFingerprint() {
         {!userData ? (
           <>
             <h2 className="text-2xl font-semibold mb-4">Registrar Huella Digital</h2>
-            <button 
-              onClick={handleRegister} 
-              className={`px-4 py-2 rounded-md text-white ${loading ? "bg-gray-500" : "bg-green-500 hover:bg-green-600"} transition`}
+            <button
+              onClick={handleRegister}
+              className={`px-4 py-2 rounded-md text-white ${
+                loading ? "bg-gray-500" : "bg-green-500 hover:bg-green-600"
+              } transition`}
               disabled={loading}
             >
               {loading ? "Registrando..." : "Enrolar Huella"}

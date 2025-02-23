@@ -1,45 +1,62 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
-import BackButton from "./BackButton"; // Importamos el botón
+import BackButton from "./BackButton";
 
+// Configuración del socket
 const socket = io("https://servidorfingerprinter.onrender.com", {
-  transports: ["websocket"],
-  reconnection: true,
+  reconnection: true,           // Intentar reconectar automáticamente si falla
+  reconnectionAttempts: 5,      // Número máximo de intentos de reconexión
+  reconnectionDelay: 1000,      // Retraso entre intentos (en milisegundos)
 });
 
 export default function LoginForm({ onLoginSuccess }) {
-  const [message, setMessage] = useState("");
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");           // Mensaje para mostrar al usuario
+  const [userData, setUserData] = useState(null);       // Datos del usuario autenticado
+  const [loading, setLoading] = useState(true);         // Estado de carga
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Evento de conexión exitosa
     socket.on("connect", () => {
       console.log("Cliente conectado con éxito a WebSockets");
+      setMessage("Conexión establecida, esperando verificación...");
+      setLoading(false);
     });
 
+    // Evento de verificación de huella digital
     socket.on("fingerprint-verified", (data) => {
       setMessage(data.message);
       if (data.message === "Acceso permitido") {
         const userData = { id: data.id, name: data.name };
-        onLoginSuccess(userData);
+        setUserData(userData);
+        onLoginSuccess(userData);                     // Notificar al componente padre
         localStorage.setItem("user", JSON.stringify(userData));
-        navigate("/dashboard");
-        setLoading(false);
-      } else {
-        setLoading(false);
+        navigate("/dashboard");                        // Redirigir al dashboard
       }
-    });
-
-    socket.on("connect_error", (err) => {
       setLoading(false);
-      setMessage("Error en la conexión al servidor.");
     });
 
+    // Evento de error de conexión
+    socket.on("connect_error", (error) => {
+      console.error("Error de conexión detallado:", error.message);
+      setMessage("Error al conectar con el servidor. Intenta de nuevo más tarde.");
+      setLoading(false);
+    });
+
+    // Evento de desconexión
+    socket.on("disconnect", (reason) => {
+      console.log("Desconectado del servidor:", reason);
+      setMessage("Conexión perdida con el servidor.");
+      setLoading(false);
+    });
+
+    // Limpieza de eventos al desmontar el componente
     return () => {
+      socket.off("connect");
       socket.off("fingerprint-verified");
       socket.off("connect_error");
+      socket.off("disconnect");
     };
   }, [onLoginSuccess, navigate]);
 
@@ -53,7 +70,11 @@ export default function LoginForm({ onLoginSuccess }) {
             {loading ? (
               <p className="text-gray-500 animate-pulse">Esperando datos del servidor...</p>
             ) : (
-              <p className={`mt-4 font-medium ${message === "Acceso permitido" ? "text-green-500" : "text-red-500"}`}>
+              <p
+                className={`mt-4 font-medium ${
+                  message === "Acceso permitido" ? "text-green-500" : "text-red-500"
+                }`}
+              >
                 {message}
               </p>
             )}
