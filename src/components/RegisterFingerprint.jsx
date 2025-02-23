@@ -15,12 +15,13 @@ export default function RegisterFingerprint() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("[FRONTEND DEBUG] Componente RegisterFingerprint montado");
     socket.on("connect", () => {
       console.log("[FRONTEND DEBUG] ✅ Cliente conectado a WebSockets");
     });
 
     socket.on("fingerprint-registered", (data) => {
-      console.log("[FRONTEND DEBUG] 📥 Respuesta del servidor:", data);
+      console.log("[FRONTEND DEBUG] 📥 Respuesta del servidor (fingerprint-registered):", data);
       setMessage(data.message);
       setLoading(false);
 
@@ -28,6 +29,7 @@ export default function RegisterFingerprint() {
         const userData = { id: data.id, name: data.name };
         setUserData(userData);
         localStorage.setItem("user", JSON.stringify(userData));
+        console.log("[FRONTEND DEBUG] ✅ Huella registrada, redirigiendo en 2 segundos...");
         setTimeout(() => navigate("/dashboard"), 2000);
       }
     });
@@ -39,15 +41,17 @@ export default function RegisterFingerprint() {
     });
 
     return () => {
+      console.log("[FRONTEND DEBUG] Desmontando componente, limpiando listeners");
       socket.off("fingerprint-registered");
       socket.off("connect_error");
     };
   }, [navigate]);
 
   const handleRegister = async () => {
+    console.log("[FRONTEND DEBUG] Botón 'Enrolar Huella' presionado");
     setLoading(true);
     setMessage("Esperando huella...");
-    console.log("[FRONTEND DEBUG] 📤 Enviando solicitud de enrolamiento al servidor...");
+    console.log("[FRONTEND DEBUG] 📤 Preparando solicitud POST a /set-action...");
 
     try {
       const response = await fetch("https://servidorfingerprinter.onrender.com/set-action", {
@@ -56,15 +60,16 @@ export default function RegisterFingerprint() {
         body: JSON.stringify({ action: "enroll" }),
       });
 
+      console.log("[FRONTEND DEBUG] Solicitud enviada, esperando respuesta...");
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`[FRONTEND DEBUG] Error HTTP! Status: ${response.status}`);
       }
 
       const data = await response.json();
       console.log("[FRONTEND DEBUG] 📥 Respuesta del servidor:", data);
-      setMessage("Coloca tu dedo en el sensor..."); // Actualizamos mensaje para guiar al usuario
+      setMessage("Coloca tu dedo en el sensor...");
     } catch (error) {
-      console.error("[FRONTEND DEBUG] ❌ Error al comunicarse con el servidor:", error);
+      console.error("[FRONTEND DEBUG] ❌ Error al comunicarse con el servidor:", error.message);
       setMessage("❌ Error al comunicarse con el servidor.");
       setLoading(false);
     }
