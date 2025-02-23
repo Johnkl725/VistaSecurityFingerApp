@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
-import BackButton from "./BackButton"; // Importamos el botón
+import BackButton from "./BackButton";
 
 const socket = io("https://servidorfingerprinter.onrender.com", {
   transports: ["websocket"],
@@ -10,31 +10,31 @@ const socket = io("https://servidorfingerprinter.onrender.com", {
 
 export default function LoginForm({ onLoginSuccess }) {
   const [message, setMessage] = useState("");
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     socket.on("connect", () => {
-      console.log("Cliente conectado con éxito a WebSockets");
+      console.log("✅ Cliente conectado a WebSockets");
     });
 
     socket.on("fingerprint-verified", (data) => {
+      console.log("📥 Respuesta del servidor:", data);
       setMessage(data.message);
+      setLoading(false);
+
       if (data.message === "Acceso permitido") {
         const userData = { id: data.id, name: data.name };
         onLoginSuccess(userData);
         localStorage.setItem("user", JSON.stringify(userData));
-        navigate("/dashboard");
-        setLoading(false);
-      } else {
-        setLoading(false);
+        setTimeout(() => navigate("/dashboard"), 2000);
       }
     });
 
-    socket.on("connect_error", (err) => {
+    socket.on("connect_error", (error) => {
+      console.error("❌ Error en la conexión WebSocket:", error);
       setLoading(false);
-      setMessage("Error en la conexión al servidor.");
+      setMessage("❌ Error en la conexión con el servidor.");
     });
 
     return () => {
@@ -43,24 +43,27 @@ export default function LoginForm({ onLoginSuccess }) {
     };
   }, [onLoginSuccess, navigate]);
 
+  const handleVerify = () => {
+    setLoading(true);
+    setMessage("Esperando verificación...");
+    console.log("📤 Enviando señal de verificación al ESP32...");
+
+    socket.emit("start-verify"); // 🔹 Enviar evento WebSocket al ESP32
+  };
+
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
       <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 w-full max-w-md text-center">
         <BackButton />
-        {!userData ? (
-          <>
-            <h2 className="text-2xl font-semibold mb-4">Verificación de Huella Digital</h2>
-            {loading ? (
-              <p className="text-gray-500 animate-pulse">Esperando datos del servidor...</p>
-            ) : (
-              <p className={`mt-4 font-medium ${message === "Acceso permitido" ? "text-green-500" : "text-red-500"}`}>
-                {message}
-              </p>
-            )}
-          </>
-        ) : (
-          <p>Redirigiendo...</p>
-        )}
+        <h2 className="text-2xl font-semibold mb-4">Verificación de Huella Digital</h2>
+        <button 
+          onClick={handleVerify} 
+          className={`px-4 py-2 rounded-md text-white ${loading ? "bg-gray-500" : "bg-blue-500 hover:bg-blue-600"} transition`}
+          disabled={loading}
+        >
+          {loading ? "Verificando..." : "Verificar Huella"}
+        </button>
+        <p className="mt-4 text-lg font-medium animate-pulse">{message}</p>
       </div>
     </div>
   );

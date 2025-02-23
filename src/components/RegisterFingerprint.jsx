@@ -44,46 +44,27 @@ export default function RegisterFingerprint() {
     };
   }, [navigate]);
 
-  const handleRegister = async () => {
+  const handleRegister = () => {
     setLoading(true);
     setMessage("Esperando huella...");
-    console.log("📤 Enviando solicitud de enrolamiento al servidor...");
+    console.log("📤 Enviando señal de enrolamiento al ESP32...");
 
-    try {
-      const response = await fetch("https://servidorfingerprinter.onrender.com/start-enroll", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const data = await response.json();
-      console.log("📥 Respuesta del servidor:", data);
-      setMessage(data.message);
-    } catch (error) {
-      console.error("❌ Error al comunicarse con el servidor:", error);
-      setMessage("❌ Error al comunicarse con el servidor.");
-      setLoading(false);
-    }
+    socket.emit("start-enroll"); // 🔹 Enviar evento WebSocket al ESP32
   };
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
       <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 w-full max-w-md text-center">
         <BackButton />
-        {!userData ? (
-          <>
-            <h2 className="text-2xl font-semibold mb-4">Registrar Huella Digital</h2>
-            <button 
-              onClick={handleRegister} 
-              className={`px-4 py-2 rounded-md text-white ${loading ? "bg-gray-500" : "bg-green-500 hover:bg-green-600"} transition`}
-              disabled={loading}
-            >
-              {loading ? "Registrando..." : "Enrolar Huella"}
-            </button>
-            <p className="mt-4 text-lg font-medium animate-pulse">{message}</p>
-          </>
-        ) : (
-          <p className="text-green-500 font-medium">✅ Registro exitoso. Redirigiendo...</p>
-        )}
+        <h2 className="text-2xl font-semibold mb-4">Registrar Huella Digital</h2>
+        <button 
+          onClick={handleRegister} 
+          className={`px-4 py-2 rounded-md text-white ${loading ? "bg-gray-500" : "bg-green-500 hover:bg-green-600"} transition`}
+          disabled={loading}
+        >
+          {loading ? "Registrando..." : "Enrolar Huella"}
+        </button>
+        <p className="mt-4 text-lg font-medium animate-pulse">{message}</p>
       </div>
     </div>
   );
