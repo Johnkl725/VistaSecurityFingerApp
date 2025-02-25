@@ -1,52 +1,50 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
-import { useEsp32 } from "../hooks/useEsp32";
-import BackButton from "./BackButton";
+import { useNavigate } from "react-router-dom";
 
-export default function LoginForm({ onLoginSuccess }) {
-  const { esp32Ip } = useEsp32();
+const socket = io("https://servidorfingerprinter.onrender.com", {
+  transports: ["websocket"],
+  reconnection: true,
+});
+
+export default function LoginForm({ onLoginSuccess, esp32Ip }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    if (!esp32Ip) return;
-
-    const newSocket = io(`http://${esp32Ip}:81`, { transports: ["websocket"], reconnection: true });
-    setSocket(newSocket);
-
-    newSocket.on("connect", () => console.log("✅ WebSocket conectado"));
-    newSocket.on("fingerprint-verified", (data) => {
+    socket.on("fingerprint-verified", (data) => {
       setMessage(data.message);
       setLoading(false);
       if (data.message === "Acceso permitido") {
-        onLoginSuccess({ id: data.id, name: data.name });
-        localStorage.setItem("user", JSON.stringify({ id: data.id, name: data.name }));
-        setTimeout(() => navigate("/dashboard"), 2000);
+        const userData = { id: data.id, name: data.name };
+        onLoginSuccess(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
+        navigate("/dashboard");
       }
     });
 
-    return () => newSocket.disconnect();
-  }, [esp32Ip, onLoginSuccess, navigate]);
+    return () => socket.off("fingerprint-verified");
+  }, [navigate]);
 
   const handleVerify = () => {
-    if (!socket) return alert("Esperando conexión con ESP32...");
     setLoading(true);
-    setMessage("Esperando verificación...");
-    socket.emit("start-verify");
+    console.log("🔍 Verificando huella en ESP32 con IP:", esp32Ip);
+    socket.emit("start-verify"); // 📤 Enviar al servidor intermedio
   };
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="bg-white shadow-lg rounded-lg p-8 text-center">
-        <BackButton />
-        <h2 className="text-2xl font-semibold">Verificación de Huella Digital</h2>
-        <button onClick={handleVerify} disabled={loading} className="px-4 py-2 bg-blue-500 text-white rounded-md">
+    <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 w-full max-w-md text-center">
+        <h2 className="text-2xl font-semibold mb-4">Verificación de Huella</h2>
+        <button
+          onClick={handleVerify}
+          className={`px-4 py-2 rounded-md text-white ${loading ? "bg-gray-500" : "bg-blue-500 hover:bg-blue-600"} transition`}
+          disabled={loading}
+        >
           {loading ? "Verificando..." : "Verificar Huella"}
         </button>
-        <p className="mt-4">{message}</p>
+        <p className="mt-4 text-lg font-medium animate-pulse">{message}</p>
       </div>
     </div>
   );

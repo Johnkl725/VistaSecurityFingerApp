@@ -1,24 +1,39 @@
 import { useState, useEffect } from "react";
 import { io } from "socket.io-client";
+import axios from "axios";
+
+const SERVER_URL = "https://servidorfingerprinter.onrender.com"; // 🖥 Reemplázalo con tu servidor
+
+const socket = io(SERVER_URL, { transports: ["websocket"], reconnection: true });
 
 export const useEsp32 = () => {
-  const [esp32Ip, setEsp32Ip] = useState(localStorage.getItem("esp32Ip") || "");
+  const [esp32Ip, setEsp32Ip] = useState("");
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_WS_URL, { transports: ["websocket"] });
+    const fetchEsp32Ip = async () => {
+      try {
+        const response = await axios.get(`${SERVER_URL}/esp32-ip`);
+        if (response.data.esp32_ip) {
+          setEsp32Ip(response.data.esp32_ip);
+          console.log("✅ IP del ESP32 obtenida:", response.data.esp32_ip);
+        }
+      } catch (error) {
+        console.error("❌ Error obteniendo la IP del ESP32", error);
+      }
+    };
 
-    socket.on("connect", () => console.log("✅ Conectado a WebSockets"));
+    // Obtener la IP al cargar
+    fetchEsp32Ip();
 
-    // Recibir la IP del ESP32 y almacenarla en localStorage para evitar problemas al recargar la página
-    socket.on("esp32_ip", (data) => {
-      console.log("🔍 IP detectada:", data.esp32_ip);
+    // Mantener actualizada la IP en tiempo real con WebSockets
+    socket.on("esp32-ip", (data) => {
+      console.log("📡 IP del ESP32 actualizada:", data.esp32_ip);
       setEsp32Ip(data.esp32_ip);
-      localStorage.setItem("esp32Ip", data.esp32_ip);
     });
 
-    socket.on("connect_error", () => console.error("❌ Error en WebSocket"));
-
-    return () => socket.disconnect();
+    return () => {
+      socket.off("esp32-ip");
+    };
   }, []);
 
   return { esp32Ip };

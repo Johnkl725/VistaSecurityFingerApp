@@ -8,48 +8,37 @@ const socket = io("https://servidorfingerprinter.onrender.com", {
   reconnection: true,
 });
 
-export default function RegisterFingerprint() {
+export default function EnrollFingerprint({ esp32Ip }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [userData, setUserData] = useState(null);
+  const [fingerId, setFingerId] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    socket.on("connect", () => {
-      console.log("✅ Cliente conectado a WebSockets");
-    });
-
     socket.on("fingerprint-registered", (data) => {
       console.log("📥 Respuesta del servidor:", data);
       setMessage(data.message);
       setLoading(false);
 
       if (data.message === "Huella registrada con éxito") {
-        const userData = { id: data.id, name: data.name };
-        setUserData(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
         setTimeout(() => navigate("/dashboard"), 2000);
       }
     });
 
-    socket.on("connect_error", (error) => {
-      console.error("❌ Error en la conexión WebSocket:", error);
-      setLoading(false);
-      setMessage("❌ Error en la conexión con el servidor.");
-    });
-
-    return () => {
-      socket.off("fingerprint-registered");
-      socket.off("connect_error");
-    };
+    return () => socket.off("fingerprint-registered");
   }, [navigate]);
 
   const handleRegister = () => {
-    setLoading(true);
-    setMessage("Esperando huella...");
-    console.log("📤 Enviando señal de enrolamiento al ESP32...");
+    if (!fingerId || isNaN(fingerId) || fingerId < 1 || fingerId > 127) {
+      setMessage("❌ Ingresa un ID válido (1-127)");
+      return;
+    }
 
-    socket.emit("start-enroll"); // 🔹 Enviar evento WebSocket al ESP32
+    setLoading(true);
+    setMessage("📤 Enviando solicitud al ESP32...");
+    console.log(`📤 Enrolando huella con ID: ${fingerId} en ESP32 con IP: ${esp32Ip}`);
+
+    socket.emit("enroll_id_" + fingerId); // 🔹 Enviar evento WebSocket con el ID al ESP32
   };
 
   return (
@@ -57,13 +46,28 @@ export default function RegisterFingerprint() {
       <div className="bg-white dark:bg-gray-800 shadow-xl rounded-lg p-8 w-full max-w-md text-center">
         <BackButton />
         <h2 className="text-2xl font-semibold mb-4">Registrar Huella Digital</h2>
-        <button 
-          onClick={handleRegister} 
+
+        {/* 📌 Input para ID de la huella */}
+        <input
+          type="number"
+          min="1"
+          max="127"
+          className="p-2 border rounded w-full mb-4 text-black"
+          placeholder="Ingrese ID (1-127)"
+          value={fingerId}
+          onChange={(e) => setFingerId(e.target.value)}
+          disabled={loading}
+        />
+
+        {/* 📌 Botón de Enrolamiento */}
+        <button
+          onClick={handleRegister}
           className={`px-4 py-2 rounded-md text-white ${loading ? "bg-gray-500" : "bg-green-500 hover:bg-green-600"} transition`}
           disabled={loading}
         >
           {loading ? "Registrando..." : "Enrolar Huella"}
         </button>
+
         <p className="mt-4 text-lg font-medium animate-pulse">{message}</p>
       </div>
     </div>
